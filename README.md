@@ -1,31 +1,36 @@
 # claustering_map_crimen
 This Python application performs geospatial security analysis. It identifies crime hot spots using DBSCAN. Calculates optimal escape routes via NetworkX road network analysis. Proposes strategic checkpoints. Transforms raw data into actionable tactical intelligence for military &amp; urban security.
 
+#here we import the libraries that we will use 
+    import pandas as pd
+    import numpy as np
+    import geopandas as gpd
+    from sklearn.cluster import DBSCAN
+    from shapely.geometry import Point
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
+    import matplotlib.font_manager as fm
+    import folium
+    from folium.plugins import MiniMap, MeasureControl, MousePosition # Importa MousePosition
+    from datetime import datetime
 
-import pandas as pd
-import numpy as np
-import geopandas as gpd
-from sklearn.cluster import DBSCAN
-from shapely.geometry import Point
-import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
-import matplotlib.font_manager as fm
-import folium
-from folium.plugins import MiniMap, MeasureControl, MousePosition # Importa MousePosition
-from datetime import datetime
+#read the CSV file and encode to latin-1 because the original db was wrote in spanish
+    file = r'file_to_read.csv'
+    pandas_file = pd.read_csv(file, encoding='Latin-1')
 
-file = r'file_to_read.csv'
-pandas_file = pd.read_csv(file, encoding='Latin-1')
-purgue_file = pandas_file.drop(columns=['Unnamed: 25', 'Unnamed: 21', 'Unnamed: 20'], errors='ignore') # Añadido errors='ignore'
+#this is a example to how we clean the unnecesary columns, you can modify it, we add "errors" for some human errors in the data capture
+    purgue_file = pandas_file.drop(columns=['Unnamed: 25', 'Unnamed: 21', 'Unnamed: 20'], errors='ignore') # Añadido errors='ignore'
 
-def purgue_number_values(column):
-    column = column.replace({'n/a': np.nan, 'menor': 17, 'n': np.nan, 'varias': np.nan, 'n\\a': np.nan,
-                             'individual': 1, 'pareja': 2, 'unico': 1, 'dos': 2, 'tres': 3,
-                             'varios': np.nan, 9: np.nan, 'cinco': 5, 'seis': 6, 'siete': 7,
-                             'ocho': 8, 'nueve': 9})
-    column = column.dropna()
-    column = column.astype(int)
-    return column
+
+#i created a function to clean the data capture mistakes, the data was capture manually, because is a hemerographic data base, then we can make mistakes.
+        def purgue_number_values(column):
+            column = column.replace({'n/a': np.nan, 'menor': 17, 'n': np.nan, 'varias': np.nan, 'n\\a': np.nan,
+                                     'individual': 1, 'pareja': 2, 'unico': 1, 'dos': 2, 'tres': 3,
+                                     'varios': np.nan, 9: np.nan, 'cinco': 5, 'seis': 6, 'siete': 7,
+                                     'ocho': 8, 'nueve': 9})
+        column = column.dropna()
+        column = column.astype(int)
+        return column
 
 def purgue_string_values(column):
     column = column.dropna()
