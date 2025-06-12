@@ -218,3 +218,42 @@ ax.annotate(...): This function is used to add text annotations to a specific po
 `textcoords="offset points"`: Indicates that xytext is interpreted as an offset in points from xy.
 `fontsize=7`: Font size of the annotation. A small size (7) is appropriate for individual IDs, preventing the map from becoming oversaturated with text.
 `color='black'`: Color of the annotation text.
+
+#### Adding the Scale Bar
+	scalebar = AnchoredSizeBar(
+		transform=ax.transData,
+		size=500,
+		label='500 m',
+		loc='lower right',
+		pad=0.5,
+		color='black',
+		frameon=False,
+		size_vertical=5,
+		fontproperties=fm.FontProperties(size=10)
+	)
+	ax.add_artist(scalebar)
+AnchoredSizeBar(...): This is a class from matplotlib_scalebar that allows adding a scale bar to a Matplotlib figure. It is essential for maps, as it provides a visual reference for distances.
+transform=ax.transData: Indicates that the scale bar should interpret units in data coordinates (UTM meters in this case).
+`size=500`: The length of the scale bar in data units (500 meters).
+`label='500 m'`: The text that will be displayed next to the scale bar.
+`loc='lower right'`: The location of the scale bar on the plot (bottom right corner).
+`pad=0.5`: Padding (space) between the plot edge and the scale bar.
+`color='black'`: Color of the scale bar and its text.
+`frameon=False`: Does not draw a frame around the scale bar, giving it a cleaner look.
+`size_vertical=5`: The vertical thickness of the scale bar.
+`fontproperties=fm.FontProperties(size=10)`: Defines the font properties for the scale bar text, such as its size.
+`ax.add_artist(scalebar)`: Adds the created scale bar as an artist (element) to the axes object.
+
+#### Axis Labels `ax.set_xlabel`, `ax.set_ylabel`
+
+	ax.set_xlabel("UTM East (meters)")
+	ax.set_ylabel("UTM North (meters)")
+	
+ `ax.set_xlabel `(...): Sets the label for the X-axis. On a UTM map, this represents the Easting coordinate in meters.
+ `ax.set_ylabe `l(...): Sets the label for the Y-axis. On a UTM map, this represents the Northing coordinate in meters. These labels are crucial for understanding the units and projection of the map.
+ 
+####Layout Adjustment and Plot Display `plt.tight_layout`, `plt.show`
+	plt.tight_layout()
+	plt.show()
+`plt.tight_layout()`: Automatically adjusts subplot parameters for a tight layout. This helps prevent labels, titles, and other plot elements from overlapping.
+`plt.show()`: Displays the generated figure. Without this call, the plot will not appear.
