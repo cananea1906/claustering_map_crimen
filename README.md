@@ -257,3 +257,157 @@ transform=ax.transData: Indicates that the scale bar should interpret units in d
 	plt.show()
 `plt.tight_layout()`: Automatically adjusts subplot parameters for a tight layout. This helps prevent labels, titles, and other plot elements from overlapping.
 `plt.show()`: Displays the generated figure. Without this call, the plot will not appear.
+
+####Map Initialization and Centering
+This section sets up the foundational interactive map using Folium, centering it based on the mean coordinates of your crime data in San Luis Potosí, Mexico.
+	lat_mean = gdf.geometry.y.mean()
+	lon_mean = gdf.geometry.x.mean()
+	m = folium.Map(location=[lat_mean, lon_mean], zoom_start=13, tiles='OpenStreetMap')
+	
+`lat_mean = gdf.geometry.y.mean()`: Calculates the average latitude from the y coordinates of the geospatial data (gdf). This determines the central vertical point for the map's initial view.
+`lon_mean = gdf.geometry.x.mean()`: Calculates the average longitude from the x coordinates of the geospatial data (gdf). This determines the central horizontal point for the map's initial view.
+`m = folium.Map(...)`: Initializes the main Folium map object.
+`location=[lat_mean, lon_mean]`: Sets the initial center of the map. By using the mean coordinates of your crime data, the map will automatically load focused on the area of interest (your crime dataset's geographical center).
+`zoom_start=13`: Defines the initial zoom level when the map loads. A value of 13 is a good starting point, providing a balance between showing a broader area and retaining sufficient detail for urban-level analysis. You can adjust this based on the spatial spread of your data.
+`tiles='OpenStreetMap'`: Specifies the base map layer. OpenStreetMap is a widely used, open-source mapping service providing detailed street-level data, which is excellent for crime mapping applications.
+
+
+####Adding a Custom Map Title
+This code snippet dynamically adds a custom HTML title that floats above the map, providing a clear and visually appealing header for the visualization.
+	title_html = '''
+				 <h3 align="center" style="font-size:16px;margin-bottom:5px;">			<b>Clústeres de Crímenes y Simbología</b></h3>
+				 '''
+	m.get_root().html.add_child(folium.Element(title_html))
+	
+`title_html = '''...'''`: Defines an HTML string for the map's title.
+It uses an `<h3>` tag, which is a standard HTML heading.
+`align="center"`: Centers the text horizontally.
+`style="font-size:16px;margin-bottom:5px;"`: Applies inline CSS styles to control the font size (16px) and provide a small bottom margin (5px) for spacing.
+`<b>Clústeres de Crímenes y Simbología</b>`: The actual title text, clearly stating the map's content in bold.
+`m.get_root().html.add_child(folium.Element(title_html))`: This is the Folium method to embed custom HTML directly into the map's root HTML structure. `folium.Element()` converts the raw HTML string into a Folium-compatible element. This places the title prominently at the top of your interactive map.
+#### Integrating Auxiliary Map Controls
+Folium provides several useful plugins that enhance map usability. This section adds a mini-map for navigation, a measurement tool for distance calculation, and a coordinate display for precise location identification.
+
+	minimap = MiniMap(tile_layer='OpenStreetMap', toggle_display=True, position='bottomright')
+	m.add_child(minimap)
+
+`minimap = MiniMap(...)`: Creates an instance of the MiniMap plugin. This adds a small, draggable overview map in a corner of the main map. It's incredibly useful for users to maintain spatial context when they zoom in or pan across large areas of the map.
+`tile_layer='OpenStreetMap'`: Sets the base map tiles for the mini-map to OpenStreetMap for consistency with the main map.
+`toggle_display=True`: Enables a button that allows users to toggle the visibility of the mini-map on or off.
+`position='bottomright'`: Specifies the corner of the main map where the mini-map will be displayed.
+`m.add_child(minimap)`: Adds the configured mini-map to the main Folium map object.
+
+####Plotting Crime Points with Custom Icons and Popups
+
+	for _, row in gdf.iterrows():
+		cluster_id = row['cluster']
+		cluster_color = cluster_colors[cluster_id % len(cluster_colors)] if cluster_id != -1 else 'black'
+		icon_name, _ = icono_delito(row['Delito']) 
+
+    resumen_html = f"""
+    <div style="font-family:Arial; font-size:13px;">
+        <b>ID:</b> {row['ID']}<br>
+        <b>Delito:</b> {row['Delito']}<br>
+        <b>Colonia:</b> {row['Colonia']}<br>
+        <b>Dirección:</b> {row.get("Calles o lugares especificos (Donde ocurrio)", "N/A")}<br>
+        <hr>
+        <b>Sexo delincuente:</b> {row.get('Sexo del delincuente', 'N/A')}<br>
+        <b>Edad delincuente:</b> {row.get('Edad del delincuente', 'N/A')}<br>
+        <b>Edad víctima:</b> {row.get('edad de la victima', 'N/A')}<br>
+        <b>Género víctima:</b> {row.get('genero de la victima', 'N/A')}<br>
+        <b>Número de víctima:</b> {row.get('numero de victima', 'N/A')}<br>
+        <hr>
+        <b>Drogas/Arma:</b> {row.get('Tipo de droga o arma', 'N/A')}<br>
+        <b>Marca/modelo auto:</b> {row.get('Marca y modelo de auto robado  ', 'N/A')}<br>
+        <b>Zona oscura:</b> {row.get('dark zone', 'N/A')}<br>
+        <b>Participación delincuentes:</b> {row.get('participacion de delincuentes', 'N/A')}<br>
+        <b>Nacionalidad:</b> {row.get('nacionalidad', 'N/A')}<br>
+        <b>Observaciones:</b> {row.get('obssrvaciones', 'N/A')}<br>
+    </div>
+    """
+
+    folium.Marker(
+        location=[row.geometry.y, row.geometry.x],
+        icon=folium.Icon(icon=icon_name, prefix='fa', color=cluster_color), # Usa el color del cluster
+        popup=folium.Popup(resumen_html, max_width=350)
+    ).add_to(m)
+	
+`for _, row in gdf.iterrows():`: This loop iterates through each row (representing a single crime incident) in your `GeoDataFrame` (gdf).
+`cluster_id = row['cluster']`: Extracts the `cluster_id` assigned to the current crime by the DBSCAN algorithm.
+`cluster_color = cluster_colors[cluster_id % len(cluster_colors)] if cluster_id != -1 else 'black'`: This line dynamically determines the color of the marker based on its cluster ID:
+`If cluster_id is -1` (indicating noise), it assigns the noise_color ('black').
+Otherwise, it uses the modulo operator (%) to cycle through the `cluster_colors` list, ensuring that each cluster receives a distinct color from the predefined palette.
+`icon_name, _=icono_delito(row['Delito'])` : Calls an external function `icono_delito` (which you would have defined elsewhere) to return a Font Awesome icon name (e.g., 'fa-mask' for 'Robo') based on the Delito (crime type) in the current row. This provides intuitive visual symbology for different crime categories.
+`resumen_html = f"""..."""`: Constructs a detailed HTML string for the popup that appears when a user clicks on a marker.
+It uses f-strings for easy embedding of crime attributes (ID, Delito, Colonia, Dirección, etc.) directly from the row data.
+`.get("ColumnName", "N/A")`: This method safely retrieves column values, returning "N/A" if the column or value is missing, preventing errors and providing clear information.
+The HTML is styled with basic CSS (font-family, font-size) for readability, and <hr> tags are used to separate sections within the popup.
+`folium.Marker(...)`: Creates an individual marker object for the current crime incident.
+`location=[row.geometry.y, row.geometry.x]`: Sets the marker's precise geographical location using the latitude (y) and longitude (x) from the gdf.
+`icon=folium.Icon(icon=icon_name, prefix='fa', color=cluster_color):` Configures the marker's visual representation:
+`icon=icon_name`: Uses the Font Awesome icon determined by icono_delito.
+`prefix='fa'`: Specifies that the icon set is Font Awesome.
+`color=cluster_color`: Sets the icon's background color to match its cluster, reinforcing the visual grouping.
+`popup=folium.Popup`(resumen_html, max_width=350): Attaches the rich HTML resumen_html as a popup. When the marker is clicked, this detailed information window will `appear. max_width=350` ensures the popup is adequately sized.
+`.add_to(m)`: Adds the fully configured marker to the main Folium map object m.
+
+####Custom Legend with Scroll Bar
+This section generates a sophisticated HTML legend that includes both cluster colors and crime type icons, designed to be visually appealing, informative, and manageable even with many entries via a scrollbar.
+
+	legend_html = (
+		'<div style="'
+		'position: fixed; bottom: 50px; left: 50px; width: 300px; max-height: 400px; overflow-y: auto; z-index:9999; '
+		'font-size:14px; background:rgba(255,255,255,0.95); border:2px solid #444; border-radius:8px; padding:10px;">'
+		'<h4 style="margin-top:0;"><b>Simbología</b></h4>'
+		'<b>Clústeres de Crímenes</b><br>'
+		+
+		''.join([
+			f'<span style="background:{cluster_colors[i % len(cluster_colors)]}; border-radius:50%; display:inline-block; width:12px; height:12px; margin-right:5px;"></span> Clúster {i}<br>'
+			for i in sorted([c for c in gdf["cluster"].unique() if c != -1])
+		])
+		+
+		f'<span style="background:{noise_color}; border-radius:50%; display:inline-block; width:12px; height:12px; margin-right:5px;"></span> Ruido (Clúster -1)<br>'
+		'<hr>'
+		'<b>Simbología de Delitos</b><br>'
+		'<i class="fa fa-mask"></i> Robo<br>'
+		'<i class="fa fa-user-secret"></i> Asalto<br>'
+		'<i class="fa fa-skull-crossbones"></i> Asesinato/Intento<br>'
+		'<i class="fa fa-venus"></i> Feminicidio<br>'
+		'<i class="fa fa-venus-mars"></i> Violación/Abuso sexual<br>'
+		'<i class="fa fa-door-open"></i> Allanamiento<br>'
+		'<i class="fa fa-cannabis"></i> Portación/Poseción de droga<br>'
+		'<i class="fa fa-knife"></i> Arma blanca<br>'
+		'<i class="fa fa-gun"></i> Arma de fuego<br>'
+		'<i class="fa fa-biohazard"></i> Armas y droga<br>'
+		'<i class="fa fa-fist-raised"></i> Agresión<br>'
+		'<i class="fa fa-venus-mars"></i> Agresión sexual<br>'
+		'<i class="fa fa-user-lock"></i> Secuestro<br>'
+		'<i class="fa fa-dna"></i> Cuerpo/Hallazgo<br>'
+		'<i class="fa fa-user-slash"></i> Desaparición<br>'
+		'<i class="fa fa-house"></i> Violencia familiar<br>'
+		'<i class="fa fa-bomb"></i> Atentado<br>'
+		'<i class="fa fa-bullseye"></i> Tiroteo<br>'
+		'<i class="fa fa-question"></i> Otro/Desconocido<br>'
+		'<hr>'
+		'<span style="font-size:12px;color:#444;">La escala de distancia está en la esquina inferior izquierda.</span>'
+		'</div>'
+	)
+
+	m.get_root().html.add_child(folium.Element(legend_html))
+
+`legend_html = (...)`: Defines a multi-line HTML string representing the entire custom legend structure.
+Positioning and Styling:
+`position: fixed; bottom: 50px; left: 50px;: ` Uses fixed positioning to place the legend at a specific distance from the bottom and left edges of the map, ensuring it stays visible even when the map is scrolled.
+`width: 300px; max-height: 400px; overflow-y: auto;:` Sets the legend's width, maximum height, and, crucially, adds a vertical scrollbar (overflow-y: auto) if the content exceeds the max-height. This is essential for legends with many entries, preventing them from overflowing the map.
+`z-index:9999;:` Ensures the legend is rendered on top of all other map elements, making it always accessible.
+Other styles like background, border, border-radius, and padding are applied for a clean, professional appearance.
+"Clústeres de Crímenes" section:
+Dynamically generates entries for each unique cluster ID found in your `gdf["cluster"] column (excluding -1 for noise)`.
+Uses a `<span>` element styled as a small, colored circle` (border-radius:50%) `to visually represent each cluster's color.
+`sorted([c for c in gdf["cluster"].unique() if c != -1])`: This ensures clusters are listed in numerical order for better readability.
+`"Ruido (Clúster -1)"`: An explicit entry is added for the noise points, using the noise_color.
+`'<hr>'`: Adds a horizontal rule to visually separate the cluster legend from the crime type symbology.
+"Simbología de Delitos" section:
+Lists common crime types with their corresponding Font Awesome icons `(<i class="fa fa-icon-name"></i>)`. This directly ties into the icono_delito function and provides a clear visual guide for understanding the markers on the map.
+`Distance Scale Note`: A small, discreet message informing the user that the distance scale can be found in the lower-left corner.
+`m.get_root().html.add_child(folium.Element(legend_html)):` Embeds this sophisticated custom HTML legend directly into the interactive Folium map.
